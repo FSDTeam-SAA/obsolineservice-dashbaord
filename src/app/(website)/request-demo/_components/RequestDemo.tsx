@@ -71,6 +71,8 @@ function RequestDemo() {
           </div>
         </div>
 
+        
+
         <div className="rounded-2xl border p-5 shadow-[0_22px_60px_rgba(35,51,95,0.10)] backdrop-blur-sm sm:p-7 lg:p-8">
           {isSubmitted ? (
             <div role="status" className="flex min-h-[480px] flex-col items-center justify-center px-4 text-center">
