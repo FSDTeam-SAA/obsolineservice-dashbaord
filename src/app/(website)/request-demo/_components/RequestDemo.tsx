@@ -1,8 +1,14 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const inputStyles =
   "h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#4a43a1] focus:ring-2 focus:ring-[#4a43a1]/15";
@@ -81,9 +87,13 @@ function NumberField({ id, label }: { id: string; label: string }) {
 
 function RequestDemo() {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const demoRequest = useMutation({
     mutationFn: submitDemoRequest,
-    onSuccess: () => setIsSubmitted(true),
+    onSuccess: () => {
+      formRef.current?.reset();
+      setIsSubmitted(true);
+    },
   });
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -110,7 +120,8 @@ function RequestDemo() {
   };
 
   return (
-    <main className="relative min-h-[calc(100vh-72px)] overflow-hidden bg-[#f8f9fd] py-14 sm:py-16 lg:py-20">
+    <>
+      <main className="relative min-h-[calc(100vh-72px)] overflow-hidden bg-[#f8f9fd] py-14 sm:py-16 lg:py-20">
       <div className="pointer-events-none absolute -left-40 top-1/2 size-96 -translate-y-1/2 rounded-full bg-blue-100/45 blur-3xl" />
       <div className="pointer-events-none absolute -right-32 -top-32 size-96 rounded-full bg-indigo-100/35 blur-3xl" />
 
@@ -137,28 +148,7 @@ function RequestDemo() {
         
 
         <div className="rounded-2xl border p-5 shadow-[0_22px_60px_rgba(35,51,95,0.10)] backdrop-blur-sm sm:p-7 lg:p-8">
-          {isSubmitted ? (
-            <div role="status" className="flex min-h-[480px] flex-col items-center justify-center px-4 text-center">
-              <span className="grid size-16 place-items-center rounded-full bg-emerald-50 text-emerald-600">
-                <CheckCircle2 aria-hidden="true" size={32} />
-              </span>
-              <h2 className="mt-5 text-2xl font-semibold text-slate-950">Thank you for reaching out!</h2>
-              <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
-                We&apos;ve received your request. A member of our team will contact you shortly to arrange your personalized demo.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  demoRequest.reset();
-                  setIsSubmitted(false);
-                }}
-                className="mt-6 text-sm font-semibold text-[#29236c] hover:underline"
-              >
-                Submit another request
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field id="name" label="Name" placeholder="Enter your full name" />
                 <Field id="phone" label="Phone Number" type="tel" placeholder="Enter your phone number" />
@@ -216,10 +206,40 @@ function RequestDemo() {
 
               
             </form>
-          )}
         </div>
       </div>
-    </main>
+      </main>
+
+      <Dialog
+        open={isSubmitted}
+        onOpenChange={(open) => {
+          setIsSubmitted(open);
+          if (!open) demoRequest.reset();
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl border-0 px-6 py-10 text-center shadow-2xl sm:px-10">
+          <div className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+            <CheckCircle2 aria-hidden="true" size={34} />
+          </div>
+          <DialogTitle className="mt-2 text-2xl leading-tight text-slate-950">
+            Thank you for reaching out!
+          </DialogTitle>
+          <DialogDescription className="mx-auto max-w-sm text-sm leading-6 text-slate-500">
+            We&apos;ve received your request. A member of our team will contact you shortly to arrange your personalized demo.
+          </DialogDescription>
+          <button
+            type="button"
+            onClick={() => {
+              setIsSubmitted(false);
+              demoRequest.reset();
+            }}
+            className="mx-auto mt-3 rounded-full bg-[#29236c] px-7 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1e1957] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#29236c] focus-visible:ring-offset-2"
+          >
+            Done
+          </button>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
