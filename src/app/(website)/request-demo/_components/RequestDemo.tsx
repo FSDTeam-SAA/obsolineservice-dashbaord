@@ -1,10 +1,51 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 const inputStyles =
   "h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#4a43a1] focus:ring-2 focus:ring-[#4a43a1]/15";
+
+type RequestDemoPayload = {
+  name: string;
+  phoneNumber: string;
+  email: string;
+  location: string;
+  holidayHomes: number;
+  campingPitches: number;
+  rooms: number;
+  isRentingOnBehalf: boolean;
+  desiredDate?: string;
+  preferredTime?: string;
+  message?: string;
+};
+
+type RequestDemoResponse = {
+  success: boolean;
+  message: string;
+};
+
+async function submitDemoRequest(payload: RequestDemoPayload) {
+  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL?.replace(/\/$/, "");
+
+  if (!baseUrl) {
+    throw new Error("The API URL is not configured. Please try again later.");
+  }
+
+  const response = await fetch(`${baseUrl}/request-demo`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const result = (await response.json().catch(() => null)) as RequestDemoResponse | null;
+
+  if (!response.ok) {
+    throw new Error(result?.message || "We couldn't submit your request. Please try again.");
+  }
+
+  return result;
+}
 
 function Field({
   id,
@@ -40,10 +81,32 @@ function NumberField({ id, label }: { id: string; label: string }) {
 
 function RequestDemo() {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const demoRequest = useMutation({
+    mutationFn: submitDemoRequest,
+    onSuccess: () => setIsSubmitted(true),
+  });
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsSubmitted(true);
+    const formData = new FormData(event.currentTarget);
+    const optionalValue = (name: string) => {
+      const value = String(formData.get(name) ?? "").trim();
+      return value || undefined;
+    };
+
+    demoRequest.mutate({
+      name: String(formData.get("name") ?? "").trim(),
+      phoneNumber: String(formData.get("phone") ?? "").trim(),
+      email: String(formData.get("email") ?? "").trim(),
+      location: String(formData.get("location") ?? "").trim(),
+      holidayHomes: Number(formData.get("holidayHomes") || 0),
+      campingPitches: Number(formData.get("campingPitches") || 0),
+      rooms: Number(formData.get("rooms") || 0),
+      isRentingOnBehalf: formData.get("otherOwners") === "yes",
+      desiredDate: optionalValue("desiredDate"),
+      preferredTime: optionalValue("preferredTime"),
+      message: optionalValue("message"),
+    });
   };
 
   return (
@@ -83,7 +146,14 @@ function RequestDemo() {
               <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
                 We&apos;ve received your request. A member of our team will contact you shortly to arrange your personalized demo.
               </p>
-              <button type="button" onClick={() => setIsSubmitted(false)} className="mt-6 text-sm font-semibold text-[#29236c] hover:underline">
+              <button
+                type="button"
+                onClick={() => {
+                  demoRequest.reset();
+                  setIsSubmitted(false);
+                }}
+                className="mt-6 text-sm font-semibold text-[#29236c] hover:underline"
+              >
                 Submit another request
               </button>
             </div>
@@ -126,9 +196,19 @@ function RequestDemo() {
                 <textarea id="message" name="message" rows={5} placeholder="Write your message here..." className="w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-[#4a43a1] focus:ring-2 focus:ring-[#4a43a1]/15" />
               </div>
 
+              {demoRequest.isError && (
+                <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-center text-sm text-red-700">
+                  {demoRequest.error.message}
+                </p>
+              )}
+
               <div className="flex justify-center pt-1">
-                <button type="submit" className="group inline-flex items-center gap-2 rounded-full bg-[#29236c] px-7 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(41,35,108,0.22)] transition-all hover:-translate-y-0.5 hover:bg-[#1e1957] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#29236c] focus-visible:ring-offset-2">
-                  Send Request
+                <button
+                  type="submit"
+                  disabled={demoRequest.isPending}
+                  className="group inline-flex items-center gap-2 rounded-full bg-[#29236c] px-7 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(41,35,108,0.22)] transition-all hover:-translate-y-0.5 hover:bg-[#1e1957] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#29236c] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                >
+                  {demoRequest.isPending ? "Sending..." : "Send Request"}
                   <ArrowRight aria-hidden="true" size={15} className="transition-transform group-hover:translate-x-0.5" />
                 </button>
               </div>
